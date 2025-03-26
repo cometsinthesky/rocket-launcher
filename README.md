@@ -36,12 +36,5 @@ Fuel consumption per step is determined by:
 \text{Fuel per step} = \frac{\text{Initial Fuel}}{\text{Total Steps until Fuel Runs Out}}
 \]
 
-## Installation
-
-### Prerequisites
-- A modern web browser (Chrome, Firefox, Edge, etc.)
-
-### Steps to run:
-1. Clone the repository to your local machine:
-   ```bash
-   git clone https://github.com/yourusername/rocket-simulation.git
+## Access
+Via GitHub pages: https://cometsinthesky.github.io/rocket-launcher/
