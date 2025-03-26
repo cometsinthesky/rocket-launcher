@@ -1,111 +1,266 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simulação do Foguete</title>
-    <style>
-        body { text-align: center; font-family: Arial, sans-serif; }
-        canvas { background: url('plataforma.png') no-repeat bottom; display: block; margin: auto; }
-        .info { margin-top: 20px; }
-        .buttons { margin-top: 20px; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simulação do Foguete</title>
+  <style>
+    body { 
+      margin: 0; 
+      overflow: hidden; 
+      font-family: Arial, sans-serif; 
+      background: black;
+    }
+    canvas { 
+      display: block; 
+      position: absolute; 
+      top: 0; 
+      left: 0; 
+    }
+    .info { 
+      position: absolute; 
+      top: 20px; 
+      left: 20px; 
+      color: white; 
+      font-size: 18px; 
+    }
+    .buttons { 
+      position: absolute; 
+      top: 20px; 
+      right: 20px; 
+      color: white;
+    }
+    .toggle-unit {
+      margin-left: 10px;
+      padding: 4px 8px;
+      font-size: 14px;
+    }
+    /* Combustível em kg no canto inferior direito */
+    #fuelKg {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      color: white;
+      font-size: 18px;
+    }
+  </style>
 </head>
 <body>
 
+  <canvas id="canvas"></canvas>
+  <div class="info">
     <h1>Simulação do Foguete</h1>
-    <canvas id="canvas" width="400" height="600"></canvas>
-    <div class="info">
-        <p>Altitude: <span id="altitude">0</span> km</p>
-        <p>Velocidade: <span id="velocidade">0</span> m/s</p>
-        <p>Camada: <span id="camada">Solo</span></p>
-        <p>Combustível: <span id="combustivel">100%</span></p>
-    </div>
-    <div class="buttons">
-        <button onclick="lançar()">Lançar</button>
-        <button onclick="aumentarEmpuxo()">Aumentar Empuxo</button>
-    </div>
+    <p>Altitude: <span id="altitude">0</span> km</p>
+    <p>
+      Velocidade: <span id="velocidade">0</span> 
+      <button id="toggleUnit" class="toggle-unit" onclick="toggleUnidade()">m/s</button>
+    </p>
+    <p>Camada: <span id="camada">Solo</span></p>
+    <p>Combustível: <span id="combustivel">100%</span></p>
+  </div>
+  <div class="buttons">
+    <button onclick="lançar()">Lançar</button>
+    <button onclick="aumentarEmpuxo()">Aumentar Empuxo</button>
+  </div>
+  <!-- Combustível em kg -->
+  <div id="fuelKg">Combustível: 729000 kg</div>
 
-    <script>
-        const canvas = document.getElementById("canvas");
-        const ctx = canvas.getContext("2d");
-        const fogueteImg = new Image();
-        fogueteImg.src = "foguete.png"; 
+  <script>
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+    const fogueteImg = new Image();
+    fogueteImg.src = "./images/rocket.png";
 
-        let altitude = 0; // em km
-        let velocidade = 0; // em m/s
-        let massaInicial = 500000; // kg (incluindo combustível)
-        let massaFinal = 200000; // kg (após combustível ser queimado)
-        let impulsoEspecífico = 3000; // m/s (velocidade dos gases)
-        let empuxo = 0; // força gerada
-        let gravidade = 9.81; // m/s²
-        let tempo = 0;
-        let combustivel = 100; // porcentagem de combustível
+    // Ajusta o tamanho do canvas para preencher a tela inteira
+    function ajustarCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      // Posição fixa do foguete: centralizado horizontalmente e perto do rodapé
+      foguete.x = canvas.width / 2 - 50;
+      foguete.y = canvas.height - 160; // 150 de altura + 10px de margem
+    }
+    window.addEventListener("resize", ajustarCanvas);
 
-        let foguete = { x: 150, y: 500 }; // posição inicial no canvas
-        let lançado = false;
+    // Parâmetros da simulação
+    let altitude = 0;         // em km
+    let velocidade = 0;       // em m/s
+    const aceleracao = 83.33; // m/s² para que, partindo do repouso, em 120s a altitude seja ~600 km (antes do limite de 550 km)
+    let combustivel = 100;    // combustível em porcentagem
+    let lançado = false;
+    const velocidadeMax = 8000; // limite máximo da velocidade em m/s
+    const altitudeMax = 550;    // limite máximo da altitude em km
 
-        function desenharFoguete() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.drawImage(fogueteImg, foguete.x, foguete.y, 100, 150);
+    // Unidade de velocidade: "m/s" ou "km/h"
+    let velUnidade = "m/s";
+
+    // Combustível total em kg
+    const initialFuelKg = 729000;
+
+    // O foguete permanece fixo na tela
+    let foguete = { x: 0, y: 0 };
+
+    ajustarCanvas();
+
+    // Função de interpolação entre duas cores (formato hexadecimal)
+    function interpolateColor(color1, color2, factor) {
+      const c1 = parseInt(color1.slice(1), 16);
+      const c2 = parseInt(color2.slice(1), 16);
+      const r1 = (c1 >> 16) & 0xff;
+      const g1 = (c1 >> 8) & 0xff;
+      const b1 = c1 & 0xff;
+      const r2 = (c2 >> 16) & 0xff;
+      const g2 = (c2 >> 8) & 0xff;
+      const b2 = c2 & 0xff;
+      const r = Math.round(r1 + factor * (r2 - r1));
+      const g = Math.round(g1 + factor * (g2 - g1));
+      const b = Math.round(b1 + factor * (b2 - b1));
+      return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+    }
+
+    // Atualiza o fundo com um gradiente contínuo
+    function atualizarFundo() {
+      // f varia de 0 (solo) até 1 (200 km ou mais, definindo o espaço)
+      let f = Math.min(altitude / 200, 1);
+      const corInferiorSolo = "#87CEEB"; // azul céu (solo)
+      const corSuperiorSolo = "#00BFFF"; // azul profundo (próximo ao topo do céu)
+      const corInferior = interpolateColor(corInferiorSolo, "#000000", f);
+      const corSuperior = interpolateColor(corSuperiorSolo, "#000000", f);
+      let gradiente = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      gradiente.addColorStop(0, corSuperior);
+      gradiente.addColorStop(1, corInferior);
+      ctx.fillStyle = gradiente;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    // Desenha o foguete (posição fixa)
+    function desenharFoguete() {
+      ctx.drawImage(fogueteImg, foguete.x, foguete.y, 100, 150);
+    }
+
+// Atualiza as informações exibidas na tela
+function atualizarInfo() {
+  // Atualiza a altitude, arredondada para um número inteiro
+  document.getElementById("altitude").textContent = Math.floor(altitude); // Remover casas decimais
+
+  let velocidadeExibida = velocidade;
+  if (velUnidade === "km/h") {
+    velocidadeExibida = velocidade * 3.6;
+  }
+  // Formata velocidade com vírgula como separador de milhar e sem casas decimais
+  document.getElementById("velocidade").textContent = Math.floor(velocidadeExibida).toLocaleString('en');
+
+  // Formata o combustível com vírgula como separador de milhar e sem casas decimais
+  document.getElementById("combustivel").textContent = Math.floor(combustivel).toLocaleString('en') + "%";
+
+  // Atualiza o combustível em kg (baseado no percentual)
+  const fuelKg = (combustivel / 100) * initialFuelKg;
+  document.getElementById("fuelKg").textContent = "Combustível: " + Math.floor(fuelKg).toLocaleString('en') + " kg";
+}
+
+
+    // Atualiza a camada atmosférica conforme a altitude, exibindo apenas a faixa atual.
+    function atualizarCamada() {
+      let camada = "";
+      if (altitude < 12) {
+        camada = "Troposfera";
+      } else if (altitude < 50) {
+        camada = "Estratosfera";
+      } else if (altitude < 85) {
+        camada = "Mesosfera";
+      } else {
+        // Altitude >=80 km: usa a Termosfera como base.
+        if (altitude < 100) {
+          camada = "Termosfera";
+        } else if (altitude >= 100 && altitude < 110) {
+          camada = "Termosfera - Linha de Kármán";
+        } else if (altitude >= 110 && altitude < 200) {
+            camada = "Termosfera";
+        } else if (altitude >= 200 && altitude < 300) {
+          camada = "Termosfera - Auroras";
+        } else if (altitude < 400) {
+            camada = "Termosfera";
+        } else if (altitude >= 400 && altitude < 450) {
+          camada = "Termosfera - International Space Station - ISS";
+        } else { (altitude = 550)
+          camada = "Termosfera - Órbita do Telescópio Espacial Hubble";
         }
+      }
+      document.getElementById("camada").innerHTML = camada;
+    }
 
-        function atualizarSimulacao() {
-            if (!lançado || combustivel <= 0) return;
+    // Intervalo de tempo da simulação (dt em segundos: 50ms = 0.05 s)
+    const dt = 0.05;
+    // Para que o combustível acabe em 600 km (120s = 2400 passos) antes do limite de 550 km,
+    // o consumo por passo permanece 100/2400.
+    const consumoPorPasso = 100 / 2400;
 
-            let massaAtual = massaInicial - (massaInicial - massaFinal) * (1 - combustivel / 100);
-            let deltaV = impulsoEspecífico * Math.log(massaInicial / massaAtual);
-            
-            velocidade += deltaV - gravidade; 
-            altitude += velocidade / 1000; // Convertendo para km
+    // Atualiza os parâmetros da simulação (aceleração constante)
+    function atualizarSimulacao() {
+      if (!lançado || combustivel <= 0) return;
+      
+      // Atualiza a velocidade (limitada a velocidadeMax)
+      velocidade += aceleracao * dt;
+      if (velocidade > velocidadeMax) {
+        velocidade = velocidadeMax;
+      }
+      
+      // Atualiza a altitude (converte de metros para km)
+      altitude += (velocidade * dt) / 1000;
+      if (altitude > altitudeMax) {
+        altitude = altitudeMax;
+        combustivel = 0;
+      }
+      
+      // Diminui o combustível
+      combustivel -= consumoPorPasso;
+      if (combustivel < 0) combustivel = 0;
+      
+      atualizarInfo();
+      atualizarCamada();
+    }
 
-            foguete.y -= velocidade / 200; 
+    // Função de animação que redesenha o fundo e o foguete
+    function animar() {
+      atualizarFundo();
+      desenharFoguete();
+      requestAnimationFrame(animar);
+    }
 
-            if (foguete.y < 0) foguete.y = 0; 
+    // Função que controla a simulação (atualiza os parâmetros a cada 50ms)
+    function simular() {
+      if (!lançado || combustivel <= 0) return;
+      atualizarSimulacao();
+      setTimeout(simular, 50);
+    }
 
-            atualizarCamada();
-            atualizarInfo();
+    // Botão "Lançar"
+    function lançar() {
+      if (!lançado) {
+        lançado = true;
+        simular();
+      }
+    }
 
-            combustivel -= 0.1;
-            if (combustivel <= 0) combustivel = 0;
+    // Botão "Aumentar Empuxo" (aumenta a velocidade para efeito visual)
+    function aumentarEmpuxo() {
+      if (lançado && combustivel > 0) {
+        velocidade += 5;
+        if (velocidade > velocidadeMax) velocidade = velocidadeMax;
+      }
+    }
 
-            requestAnimationFrame(atualizarSimulacao);
-        }
+    // Toggle para unidade de velocidade: m/s ou km/h
+    function toggleUnidade() {
+      velUnidade = (velUnidade === "m/s") ? "km/h" : "m/s";
+      document.getElementById("toggleUnit").textContent = velUnidade;
+      atualizarInfo();
+    }
 
-        function lançar() {
-            if (!lançado) {
-                lançado = true;
-                empuxo = 5000000; 
-                atualizarSimulacao();
-            }
-        }
-
-        function aumentarEmpuxo() {
-            if (lançado && combustivel > 0) {
-                empuxo += 500000;
-                atualizarSimulacao();
-            }
-        }
-
-        function atualizarCamada() {
-            let camada = "Solo";
-            if (altitude > 700) camada = "Exosfera (Espaço)";
-            else if (altitude > 80) camada = "Termosfera";
-            else if (altitude > 50) camada = "Mesosfera";
-            else if (altitude > 12) camada = "Estratosfera";
-            else if (altitude > 0) camada = "Troposfera";
-
-            document.getElementById("camada").textContent = camada;
-        }
-
-        function atualizarInfo() {
-            document.getElementById("altitude").textContent = altitude.toFixed(1);
-            document.getElementById("velocidade").textContent = velocidade.toFixed(1);
-            document.getElementById("combustivel").textContent = combustivel.toFixed(1) + "%";
-        }
-
-        fogueteImg.onload = desenharFoguete;
-    </script>
+    // Inicia a animação quando a imagem do foguete carregar
+    fogueteImg.onload = () => {
+      animar();
+    };
+  </script>
 
 </body>
 </html>
