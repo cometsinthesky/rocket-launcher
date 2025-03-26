@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Simulação do Foguete</title>
+  <title>Rocket Simulation</title>
   <style>
     body { 
       margin: 0; 
@@ -35,7 +35,6 @@
       padding: 4px 8px;
       font-size: 14px;
     }
-    /* Combustível em kg no canto inferior direito */
     #fuelKg {
       position: absolute;
       bottom: 20px;
@@ -49,21 +48,21 @@
 
   <canvas id="canvas"></canvas>
   <div class="info">
-    <h1>Simulação do Foguete</h1>
+    <h1>Rocket Simulation</h1>
     <p>Altitude: <span id="altitude">0</span> km</p>
     <p>
-      Velocidade: <span id="velocidade">0</span> 
-      <button id="toggleUnit" class="toggle-unit" onclick="toggleUnidade()">m/s</button>
+      Speed: <span id="velocity">0</span> 
+      <button id="toggleUnit" class="toggle-unit" onclick="toggleUnit()">m/s</button>
     </p>
-    <p>Camada: <span id="camada">Solo</span></p>
-    <p>Combustível: <span id="combustivel">100%</span></p>
+    <p>Layer: <span id="layer">Ground</span></p>
+    <p>Fuel: <span id="fuel">100%</span></p>
   </div>
   <div class="buttons">
-    <button onclick="lançar()">Lançar</button>
-    <button onclick="aumentarEmpuxo()">Aumentar Empuxo</button>
+    <button onclick="launch()">Launch</button>
+    <button onclick="increaseThrust()">Increase Thrust</button>
   </div>
-  <!-- Combustível em kg -->
-  <div id="fuelKg">Combustível: 729000 kg</div>
+  <!-- Fuel in kg -->
+  <div id="fuelKg">Fuel: 729000 kg</div>
 
   <script src="./config.js"></script>
 
