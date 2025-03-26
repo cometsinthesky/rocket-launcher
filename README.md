@@ -2,7 +2,7 @@
 
 Welcome to the **Rocket Simulation**! 🚀
 
-This project is a fun, interactive web-based simulation where you can launch your own rocket and watch it soar through the sky. The goal? Reach the stars! 🌟
+This project is a fun, interactive web-based simulation where you can launch your own rocket and watch it soar through the sky. The goal? Reach the Hubble Space Telescope! 🛰️
 
 The simulation gives you control over the rocket's thrust and allows you to monitor its speed, altitude, and fuel consumption. As the rocket ascends, you'll see the atmospheric layers change, and the background will transition from sky blue to the deep blackness of space. Can you make it all the way to 550 km? Only one way to find out!
 
